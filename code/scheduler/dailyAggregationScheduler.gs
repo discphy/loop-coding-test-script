@@ -14,11 +14,30 @@
 // ⚠️ 경고 누적 임계값 (이 값을 초과하면 퇴출)
 const MAX_WARNINGS = 2;
 
+/**
+ * 📊 트리거용 일일 집계 함수 (전날 자동 집계)
+ */
 function runDailyAggregation() {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const targetDate = formatDate(yesterday, "yyyy-MM-dd");
 
+  const result = executeAggregation(targetDate, true);
+
+  if (result.success) {
+    // Slack 채널에 집계 결과 전송
+    sendSlackNotification(Messages.webhook.dailySummary(result.successCount, result.missedCount));
+    Logger.log(`${targetDate} 자동 집계 완료: 챌린저 ${result.totalChallengers}명, 성공 ${result.successCount}명, 미제출 ${result.missedCount}명, 성공률 ${result.successRate}%`);
+  }
+}
+
+/**
+ * 📈 집계 실행 핵심 함수 (재사용 가능)
+ * @param {string} targetDate - 집계할 날짜 (yyyy-MM-dd)
+ * @param {boolean} saveData - 데이터 저장 여부 (true: 저장, false: 조회만)
+ * @returns {Object} 집계 결과
+ */
+function executeAggregation(targetDate, saveData) {
   // 집계 시트 생성 또는 가져오기
   const aggregationSheet = ensureSheet(SheetNames.AGGREGATION);
 
@@ -30,7 +49,7 @@ function runDailyAggregation() {
   // 챌린저 시트 확인
   if (!hasSheet(SheetNames.CHALLENGERS)) {
     Logger.log("챌린저 시트가 없습니다.");
-    return;
+    return { success: false, error: "noChallengerSheet" };
   }
 
   const challengersSheet = getSheet(SheetNames.CHALLENGERS);
@@ -38,8 +57,9 @@ function runDailyAggregation() {
 
   // 챌린저 목록 추출 (헤더 제외)
   const challengers = [];
+  const challengerMap = new Map(); // userName -> userId 매핑
   for (let i = 1; i < challengersData.length; i++) {
-    const [userName, registeredAt] = challengersData[i];
+    const [userName, userId, registeredAt] = challengersData[i];
 
     // 등록일이 집계 대상 날짜보다 이전이거나 같은 경우만 포함
     const registerDate = new Date(registeredAt);
@@ -47,12 +67,13 @@ function runDailyAggregation() {
 
     if (registerDate <= targetDateObj) {
       challengers.push(userName);
+      challengerMap.set(userName, userId); // userName -> userId 매핑 저장
     }
   }
 
   if (challengers.length === 0) {
     Logger.log("집계 대상 챌린저가 없습니다.");
-    return;
+    return { success: false, error: "noChallengersToAggregate" };
   }
 
   // 일일 제출 기록 확인
@@ -60,38 +81,62 @@ function runDailyAggregation() {
   const dailyData = dailySheet.getDataRange().getValues();
 
   // 해당 날짜에 제출한 사용자 목록
-  const submitted = new Set();
+  const submitted = [];
+  const submittedSet = new Set();
   for (let i = 1; i < dailyData.length; i++) {
     const [date, userName] = dailyData[i];
     if (date === targetDate) {
-      submitted.add(userName);
+      submitted.push(userName);
+      submittedSet.add(userName);
     }
   }
 
+  // 미제출자 목록
+  const missing = challengers.filter(name => !submittedSet.has(name));
+
   // 집계 계산
   const totalChallengers = challengers.length;
-  const successCount = challengers.filter(user => submitted.has(user)).length;
-  const missedCount = totalChallengers - successCount;
+  const successCount = submitted.length;
+  const missedCount = missing.length;
   const successRate = totalChallengers > 0
     ? ((successCount / totalChallengers) * 100).toFixed(2)
     : "0.00";
 
-  // 집계 결과 저장
-  aggregationSheet.appendRow([
+  // 데이터 저장 (saveData가 true인 경우만)
+  if (saveData) {
+    // 중복 집계 확인
+    const aggregationData = aggregationSheet.getDataRange().getValues();
+    for (let i = 1; i < aggregationData.length; i++) {
+      const [date] = aggregationData[i];
+      if (date === targetDate) {
+        return { success: false, error: "alreadyAggregated", targetDate };
+      }
+    }
+
+    // 집계 결과 저장
+    aggregationSheet.appendRow([
+      targetDate,
+      totalChallengers,
+      successCount,
+      missedCount,
+      successRate
+    ]);
+
+    // 챌린저별 통계 업데이트 및 경고 누적
+    updateChallengerStats(targetDate, challengers, submittedSet, challengerMap);
+  }
+
+  return {
+    success: true,
     targetDate,
     totalChallengers,
     successCount,
     missedCount,
-    successRate
-  ]);
-
-  // 챌린저별 통계 업데이트 및 경고 누적
-  updateChallengerStats(targetDate, challengers, submitted);
-
-  // Slack 채널에 집계 결과 전송
-  sendSlackNotification(Messages.webhook.dailySummary(successCount, missedCount));
-
-  Logger.log(`${targetDate} 집계 완료: 챌린저 ${totalChallengers}명, 성공 ${successCount}명, 미제출 ${missedCount}명, 성공률 ${successRate}%`);
+    successRate,
+    submitted,
+    missing,
+    challengerMap // 반환값에 추가 (나중에 필요할 수 있음)
+  };
 }
 
 /**
@@ -99,8 +144,9 @@ function runDailyAggregation() {
  * @param {string} date - 집계 날짜
  * @param {Array<string>} challengers - 챌린저 목록
  * @param {Set<string>} submitted - 제출한 사용자 Set
+ * @param {Map<string, string>} challengerMap - userName -> userId 매핑
  */
-function updateChallengerStats(date, challengers, submitted) {
+function updateChallengerStats(date, challengers, submitted, challengerMap) {
   const challengerStatsSheet = ensureSheet(SheetNames.CHALLENGER_STATS);
 
   // 헤더가 없으면 추가
@@ -151,7 +197,8 @@ function updateChallengerStats(date, challengers, submitted) {
 
     // 경고 임계값 초과 시 관리자에게 알림
     if (stats.warnings > MAX_WARNINGS && stats.status === "활성") {
-      sendManageNotification(Messages.webhook.warningNotification(challengerName, stats.warnings));
+      const userId = challengerMap ? challengerMap.get(challengerName) : null;
+      sendManageNotification(Messages.webhook.warningNotification(challengerName, stats.warnings, userId));
       Logger.log(`⚠️ ${challengerName} 챌린저 경고 ${stats.warnings}회 - 관리자에게 알림 전송`);
     }
 
@@ -210,76 +257,11 @@ function testDailyAggregation(dateString) {
     dateString = formatDate(new Date(), "yyyy-MM-dd");
   }
 
-  const targetDate = dateString;
+  const result = executeAggregation(dateString, true);
 
-  // 집계 시트 생성 또는 가져오기
-  const aggregationSheet = ensureSheet(SheetNames.AGGREGATION);
-
-  // 헤더가 없으면 추가
-  if (aggregationSheet.getLastRow() === 0) {
-    aggregationSheet.appendRow(["날짜", "챌린저 수", "제출 성공", "미제출", "성공률(%)"]);
+  if (result.success) {
+    Logger.log(`${dateString} 테스트 집계 완료: 챌린저 ${result.totalChallengers}명, 성공 ${result.successCount}명, 미제출 ${result.missedCount}명, 성공률 ${result.successRate}%`);
+  } else {
+    Logger.log(`집계 실패: ${result.error}`);
   }
-
-  // 챌린저 시트 확인
-  if (!hasSheet(SheetNames.CHALLENGERS)) {
-    Logger.log("챌린저 시트가 없습니다.");
-    return;
-  }
-
-  const challengersSheet = getSheet(SheetNames.CHALLENGERS);
-  const challengersData = challengersSheet.getDataRange().getValues();
-
-  // 챌린저 목록 추출 (헤더 제외)
-  const challengers = [];
-  for (let i = 1; i < challengersData.length; i++) {
-    const [userName, registeredAt] = challengersData[i];
-
-    // 등록일이 집계 대상 날짜보다 이전이거나 같은 경우만 포함
-    const registerDate = new Date(registeredAt);
-    const targetDateObj = new Date(targetDate);
-
-    if (registerDate <= targetDateObj) {
-      challengers.push(userName);
-    }
-  }
-
-  if (challengers.length === 0) {
-    Logger.log("집계 대상 챌린저가 없습니다.");
-    return;
-  }
-
-  // 일일 제출 기록 확인
-  const dailySheet = getSheet(SheetNames.DAILY);
-  const dailyData = dailySheet.getDataRange().getValues();
-
-  // 해당 날짜에 제출한 사용자 목록
-  const submitted = new Set();
-  for (let i = 1; i < dailyData.length; i++) {
-    const [date, userName] = dailyData[i];
-    if (date === targetDate) {
-      submitted.add(userName);
-    }
-  }
-
-  // 집계 계산
-  const totalChallengers = challengers.length;
-  const successCount = challengers.filter(user => submitted.has(user)).length;
-  const missedCount = totalChallengers - successCount;
-  const successRate = totalChallengers > 0
-    ? ((successCount / totalChallengers) * 100).toFixed(2)
-    : "0.00";
-
-  // 집계 결과 저장
-  aggregationSheet.appendRow([
-    targetDate,
-    totalChallengers,
-    successCount,
-    missedCount,
-    successRate
-  ]);
-
-  // 챌린저별 통계 업데이트 및 경고 누적
-  updateChallengerStats(targetDate, challengers, submitted);
-
-  Logger.log(`${targetDate} 집계 완료: 챌린저 ${totalChallengers}명, 성공 ${successCount}명, 미제출 ${missedCount}명, 성공률 ${successRate}%`);
 }

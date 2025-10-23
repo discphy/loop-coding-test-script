@@ -15,6 +15,8 @@ function doPost(e) {
       return handleUpdateSubmit(parameters);
     case "/코테제출확인":
       return handleCheckSubmit(parameters);
+    case "/코테집계":
+      return handleManualAggregation(parameters);
     default:
       return respond(Messages.error.unknownCommand(command));
   }

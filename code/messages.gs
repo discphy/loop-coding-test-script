@@ -26,6 +26,40 @@ const Messages = {
         `✅ *제출:* ${sub}`,
         `⚠️ *미제출:* ${miss}`
       ].join("\n");
+    },
+
+    manualAggregation: (date, total, success, missed, rate, submitted, missing) => {
+      const subList = submitted.length ? submitted.join(", ") : "없음";
+      const missList = missing.length ? missing.join(", ") : "없음";
+      return [
+        `📊 *${date} 집계 조회*`,
+        `👥 총 챌린저: ${total}명`,
+        `✅ 제출 성공: ${success}명`,
+        `❌ 미제출: ${missed}명`,
+        `📈 성공률: ${rate}%`,
+        ``,
+        `✅ *제출자:* ${subList}`,
+        `⚠️ *미제출자:* ${missList}`
+      ].join("\n");
+    },
+
+    actualAggregation: (date, total, success, missed, rate, submitted, missing) => {
+      const subList = submitted.length ? submitted.join(", ") : "없음";
+      const missList = missing.length ? missing.join(", ") : "없음";
+      return [
+        `✅ *${date} 집계 완료!*`,
+        `👥 총 챌린저: ${total}명`,
+        `✅ 제출 성공: ${success}명`,
+        `❌ 미제출: ${missed}명`,
+        `📈 성공률: ${rate}%`,
+        ``,
+        `📝 집계 데이터 저장 완료`,
+        `📊 챌린저 통계 업데이트 완료`,
+        `🔔 Slack 알림 전송 완료`,
+        ``,
+        `✅ *제출자:* ${subList}`,
+        `⚠️ *미제출자:* ${missList}`
+      ].join("\n");
     }
   },
 
@@ -55,14 +89,31 @@ const Messages = {
       `🤔 알 수 없는 명령어입니다: *${command}*`,
 
     noPermission: () =>
-      `🚫 이 명령을 수행할 권한이 없습니다.`
+      `🚫 이 명령을 수행할 권한이 없습니다.`,
+
+    noChallengerSheet: () =>
+      `❌ *챌린저 시트가 존재하지 않습니다.*`,
+
+    noChallengersToAggregate: () =>
+      `⚠️ *집계 대상 챌린저가 없습니다.*`,
+
+    aggregationFailed: () =>
+      `❌ *집계 중 오류가 발생했습니다.*\n관리자에게 문의하세요.`,
+
+    invalidDateFormat: () =>
+      `❌ *잘못된 날짜 형식입니다.*\n올바른 형식: yyyy-MM-dd (예: 2025-10-22)`,
+
+    alreadyAggregated: (date) =>
+      `⚠️ *${date}은(는) 이미 집계되었습니다.*\n중복 집계가 불가합니다.`
   },
 
   webhook: {
     dailySummary: (successCount, missedCount) =>
       `오늘 하루도 고생하셨습니다. ${successCount}명 챌린지 완료 ✅, ${missedCount}명 챌린지 실패 ❌`,
 
-    warningNotification: (challengerName, warnings) =>
-      `⚠️ *퇴출 필요* | ${challengerName}님 경고 ${warnings}회로 퇴출이 필요합니다.`
+    warningNotification: (challengerName, warnings, userId) => {
+      const mention = userId ? `<@${userId}>` : challengerName;
+      return `⚠️ *퇴출 필요* | ${mention}님 경고 ${warnings}회로 퇴출이 필요합니다.`;
+    }
   }
 };
