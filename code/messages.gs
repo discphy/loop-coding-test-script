@@ -60,7 +60,10 @@ const Messages = {
         `✅ *제출자:* ${subList}`,
         `⚠️ *미제출자:* ${missList}`
       ].join("\n");
-    }
+    },
+
+    aggregationStarted: (date) =>
+      `📊 *${date} 집계를 시작합니다...*\n잠시 후 채널에 결과가 전송됩니다.`
   },
 
   error: {
@@ -104,7 +107,10 @@ const Messages = {
       `❌ *잘못된 날짜 형식입니다.*\n올바른 형식: yyyy-MM-dd (예: 2025-10-22)`,
 
     alreadyAggregated: (date) =>
-      `⚠️ *${date}은(는) 이미 집계되었습니다.*\n중복 집계가 불가합니다.`
+      `⚠️ *${date}은(는) 이미 집계되었습니다.*\n중복 집계가 불가합니다.`,
+
+    futureDateNotAllowed: (date) =>
+      `❌ *${date}은(는) 집계할 수 없습니다.*\n오늘 날짜 이전만 집계 가능합니다.`
   },
 
   webhook: {
@@ -114,6 +120,22 @@ const Messages = {
     warningNotification: (challengerName, warnings, userId) => {
       const mention = userId ? `<@${userId}>` : challengerName;
       return `⚠️ *퇴출 필요* | ${mention}님 경고 ${warnings}회로 퇴출이 필요합니다.`;
+    },
+
+    aggregationComplete: (date, total, success, missed, rate, submittedMentions, missingMentions) => {
+      const subList = submittedMentions.length ? submittedMentions.join(", ") : "없음";
+      const missList = missingMentions.length ? missingMentions.join(", ") : "없음";
+      return [
+        `📊 *${date} 집계 완료*`,
+        ``,
+        `👥 총 챌린저: ${total}명`,
+        `✅ 제출 성공: ${success}명`,
+        `❌ 미제출: ${missed}명`,
+        `📈 성공률: ${rate}%`,
+        ``,
+        `✅ *제출자:* ${subList}`,
+        `⚠️ *미제출자:* ${missList}`
+      ].join("\n");
     }
   }
 };
