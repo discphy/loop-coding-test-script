@@ -54,7 +54,8 @@ loop-coding-test-script/
 │   │   ├── challengeStatusHandler.gs    # 챌린지 현황
 │   │   ├── submitHandler.gs             # 제출
 │   │   ├── updateSubmitHandler.gs       # 제출 수정
-│   │   └── checkSubmitHandler.gs        # 제출 확인
+│   │   ├── checkSubmitHandler.gs        # 제출 확인
+│   │   └── manualAggregationHandler.gs  # 수동 집계
 │   └── scheduler/                 # 스케줄러
 │       └── dailyAggregationScheduler.gs # 일일 집계
 ├── docs/

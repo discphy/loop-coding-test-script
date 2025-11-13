@@ -57,9 +57,9 @@
 다음 시트들을 생성하고 첫 번째 행에 헤더를 입력하세요:
 
 #### `challengers` 시트
-| 사용자명 | 등록일시 |
-|---------|---------|
-|         |         |
+| 사용자명 | Slack ID | 등록일시 |
+|---------|---------|---------|
+|         |         |         |
 
 #### `daily-challenge` 시트
 | 날짜 | 사용자명 | PR 링크 | 시간 |
@@ -113,6 +113,7 @@ Apps Script 편집기에서 다음 파일들을 생성하고 코드를 복사합
 - `submitHandler` - `code/handler/submitHandler.gs` 내용 복사
 - `updateSubmitHandler` - `code/handler/updateSubmitHandler.gs` 내용 복사
 - `checkSubmitHandler` - `code/handler/checkSubmitHandler.gs` 내용 복사
+- `manualAggregationHandler` - `code/handler/manualAggregationHandler.gs` 내용 복사
 
 #### 스케줄러 파일
 - `dailyAggregationScheduler` - `code/scheduler/dailyAggregationScheduler.gs` 내용 복사
@@ -211,6 +212,12 @@ Apps Script 편집기에서 다음 파일들을 생성하고 코드를 복사합
 - **Command**: `/코테제출확인`
 - **Request URL**: `{웹 앱 URL}`
 - **Short Description**: `오늘 제출한 PR 링크를 확인합니다`
+
+#### /코테집계
+- **Command**: `/코테집계`
+- **Request URL**: `{웹 앱 URL}`
+- **Short Description**: `집계를 조회하거나 수동으로 실행합니다`
+- **Usage Hint**: `2025-01-15 (선택사항)`
 
 ### 7.3 워크스페이스에 설치
 
