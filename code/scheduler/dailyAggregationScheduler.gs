@@ -62,10 +62,12 @@ function executeAggregation(targetDate, saveData) {
     const [userName, userId, registeredAt] = challengersData[i];
 
     // 등록일이 집계 대상 날짜보다 이전이거나 같은 경우만 포함
-    const registerDate = new Date(registeredAt);
+    // registeredAt이 문자열일 수도 있고 Date 객체일 수도 있으므로 처리
+    const registerDate = registeredAt instanceof Date ? registeredAt : new Date(registeredAt);
+    const registerDateStr = formatDate(registerDate, "yyyy-MM-dd");
     const targetDateObj = new Date(targetDate);
 
-    if (registerDate <= targetDateObj) {
+    if (new Date(registerDateStr) <= targetDateObj) {
       challengers.push(userName);
       challengerMap.set(userName, userId); // userName -> userId 매핑 저장
     }
@@ -85,7 +87,11 @@ function executeAggregation(targetDate, saveData) {
   const submittedSet = new Set();
   for (let i = 1; i < dailyData.length; i++) {
     const [date, userName] = dailyData[i];
-    if (date === targetDate) {
+
+    // 날짜를 문자열로 통일하여 비교
+    const dateStr = date instanceof Date ? formatDate(date, "yyyy-MM-dd") : String(date);
+
+    if (dateStr === targetDate) {
       submitted.push(userName);
       submittedSet.add(userName);
     }
@@ -93,6 +99,17 @@ function executeAggregation(targetDate, saveData) {
 
   // 미제출자 목록
   const missing = challengers.filter(name => !submittedSet.has(name));
+
+  // 제출자와 미제출자의 멘션 정보 생성 (userName -> mention)
+  const submittedMentions = submitted.map(name => {
+    const userId = challengerMap.get(name);
+    return userId ? `<@${userId}>` : name;
+  });
+
+  const missingMentions = missing.map(name => {
+    const userId = challengerMap.get(name);
+    return userId ? `<@${userId}>` : name;
+  });
 
   // 집계 계산
   const totalChallengers = challengers.length;
@@ -108,7 +125,11 @@ function executeAggregation(targetDate, saveData) {
     const aggregationData = aggregationSheet.getDataRange().getValues();
     for (let i = 1; i < aggregationData.length; i++) {
       const [date] = aggregationData[i];
-      if (date === targetDate) {
+
+      // 날짜를 문자열로 통일하여 비교
+      const dateStr = date instanceof Date ? formatDate(date, "yyyy-MM-dd") : String(date);
+
+      if (dateStr === targetDate) {
         return { success: false, error: "alreadyAggregated", targetDate };
       }
     }
@@ -135,6 +156,8 @@ function executeAggregation(targetDate, saveData) {
     successRate,
     submitted,
     missing,
+    submittedMentions, // 제출자 멘션 배열
+    missingMentions,   // 미제출자 멘션 배열
     challengerMap // 반환값에 추가 (나중에 필요할 수 있음)
   };
 }

@@ -16,8 +16,11 @@ function handleSubmit(parameters) {
   for (let i = 1; i < data.length; i++) { // 헤더 행 제외
     const [date, submittedUser, submittedLink] = data[i];
 
+    // 날짜를 문자열로 통일하여 비교
+    const dateStr = date instanceof Date ? formatDate(date, "yyyy-MM-dd") : String(date);
+
     // 오늘 이미 제출한 경우
-    if (date === today && submittedUser === user) {
+    if (dateStr === today && submittedUser === user) {
       return respond(Messages.error.alreadySubmitted());
     }
 

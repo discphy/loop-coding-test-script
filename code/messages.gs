@@ -28,9 +28,9 @@ const Messages = {
       ].join("\n");
     },
 
-    manualAggregation: (date, total, success, missed, rate, submitted, missing) => {
-      const subList = submitted.length ? submitted.join(", ") : "없음";
-      const missList = missing.length ? missing.join(", ") : "없음";
+    manualAggregation: (date, total, success, missed, rate, submittedMentions, missingMentions) => {
+      const subList = submittedMentions.length ? submittedMentions.join(", ") : "없음";
+      const missList = missingMentions.length ? missingMentions.join(", ") : "없음";
       return [
         `📊 *${date} 집계 조회*`,
         `👥 총 챌린저: ${total}명`,
@@ -43,9 +43,9 @@ const Messages = {
       ].join("\n");
     },
 
-    actualAggregation: (date, total, success, missed, rate, submitted, missing) => {
-      const subList = submitted.length ? submitted.join(", ") : "없음";
-      const missList = missing.length ? missing.join(", ") : "없음";
+    actualAggregation: (date, total, success, missed, rate, submittedMentions, missingMentions) => {
+      const subList = submittedMentions.length ? submittedMentions.join(", ") : "없음";
+      const missList = missingMentions.length ? missingMentions.join(", ") : "없음";
       return [
         `✅ *${date} 집계 완료!*`,
         `👥 총 챌린저: ${total}명`,

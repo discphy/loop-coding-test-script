@@ -9,8 +9,12 @@ function handleCheckSubmit(parameters) {
 
   for (let i = 1; i < data.length; i++) { // 헤더 행 제외
     const [date, submittedUser, submittedLink, submittedTime] = data[i];
-    if (date === today && submittedUser === user) {
-      return respond(Messages.success.checkSubmit(date, submittedTime, submittedLink));
+
+    // 날짜를 문자열로 통일하여 비교
+    const dateStr = date instanceof Date ? formatDate(date, "yyyy-MM-dd") : String(date);
+
+    if (dateStr === today && submittedUser === user) {
+      return respond(Messages.success.checkSubmit(dateStr, submittedTime, submittedLink));
     }
   }
 

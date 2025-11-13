@@ -67,8 +67,8 @@ function handleManualAggregation(parameters) {
           result.successCount,
           result.missedCount,
           result.successRate,
-          result.submitted,
-          result.missing
+          result.submittedMentions,
+          result.missingMentions
         )
       );
     } else {
@@ -80,8 +80,8 @@ function handleManualAggregation(parameters) {
           result.successCount,
           result.missedCount,
           result.successRate,
-          result.submitted,
-          result.missing
+          result.submittedMentions,
+          result.missingMentions
         )
       );
     }
